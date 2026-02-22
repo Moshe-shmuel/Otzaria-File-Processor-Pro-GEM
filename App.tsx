@@ -139,67 +139,68 @@ const App: React.FC = () => {
   const scrollToHeader = useCallback((headerHtml: string, occurrenceIndex: number) => {
     const textarea = textareaRef.current;
     if (!textarea) return;
+
+    // Focus first to trigger onFocus (history push) and any layout shifts (like scrollbars)
+    textarea.focus();
     
-    const text = textarea.value;
-    
-    // Find the Nth occurrence of the exact header HTML
-    let index = -1;
-    let currentPos = 0;
-    for (let i = 0; i <= occurrenceIndex; i++) {
-      index = text.indexOf(headerHtml, currentPos);
-      if (index === -1) break;
-      currentPos = index + 1;
-    }
-    
-    if (index !== -1) {
-      const style = window.getComputedStyle(textarea);
-      const mirror = document.createElement('div');
+    // Use requestAnimationFrame to wait for the layout to settle after focus
+    requestAnimationFrame(() => {
+      const text = textarea.value;
       
-      // Comprehensive style copy for maximum accuracy
-      const propsToCopy = [
-        'fontFamily', 'fontSize', 'fontWeight', 'lineHeight',
-        'paddingTop', 'paddingLeft', 'paddingRight', 'paddingBottom',
-        'borderLeftWidth', 'borderRightWidth', 'boxSizing',
-        'wordBreak', 'letterSpacing', 'textTransform', 'direction',
-        'textAlign', 'textIndent', 'whiteSpace', 'wordWrap', 'overflowWrap'
-      ];
+      // Find the Nth occurrence of the exact header HTML
+      let index = -1;
+      let currentPos = 0;
+      for (let i = 0; i <= occurrenceIndex; i++) {
+        index = text.indexOf(headerHtml, currentPos);
+        if (index === -1) break;
+        currentPos = index + 1;
+      }
       
-      propsToCopy.forEach(prop => {
-        (mirror.style as any)[prop] = (style as any)[prop];
-      });
-      
-      mirror.style.position = 'absolute';
-      mirror.style.visibility = 'hidden';
-      mirror.style.top = '0';
-      mirror.style.left = '-9999px';
-      // Use getBoundingClientRect for more precision on width
-      mirror.style.width = textarea.getBoundingClientRect().width + 'px';
-      mirror.style.height = 'auto';
-      mirror.style.whiteSpace = 'pre-wrap';
-      mirror.style.wordWrap = 'break-word';
-      mirror.style.overflowY = 'scroll'; // Force scrollbar space if textarea has it
+      if (index !== -1) {
+        const style = window.getComputedStyle(textarea);
+        const mirror = document.createElement('div');
+        
+        // Comprehensive style copy for maximum accuracy
+        const propsToCopy = [
+          'fontFamily', 'fontSize', 'fontWeight', 'lineHeight',
+          'paddingTop', 'paddingLeft', 'paddingRight', 'paddingBottom',
+          'borderLeftWidth', 'borderRightWidth', 'boxSizing',
+          'wordBreak', 'letterSpacing', 'textTransform', 'direction',
+          'textAlign', 'textIndent', 'whiteSpace', 'wordWrap', 'overflowWrap'
+        ];
+        
+        propsToCopy.forEach(prop => {
+          (mirror.style as any)[prop] = (style as any)[prop];
+        });
+        
+        mirror.style.position = 'absolute';
+        mirror.style.visibility = 'hidden';
+        mirror.style.top = '0';
+        mirror.style.left = '-9999px';
+        
+        // clientWidth is the correct width for text wrapping (excludes scrollbars)
+        mirror.style.width = textarea.clientWidth + 'px';
+        mirror.style.height = 'auto';
+        mirror.style.whiteSpace = 'pre-wrap';
+        mirror.style.wordWrap = 'break-word';
 
-      mirror.textContent = text.substring(0, index);
-      const marker = document.createElement('span');
-      marker.textContent = '\u200b'; 
-      mirror.appendChild(marker);
+        mirror.textContent = text.substring(0, index);
+        const marker = document.createElement('span');
+        marker.textContent = '\u200b'; 
+        mirror.appendChild(marker);
 
-      document.body.appendChild(mirror);
-      const topPos = marker.offsetTop;
-      document.body.removeChild(mirror);
+        document.body.appendChild(mirror);
+        const topPos = marker.offsetTop;
+        document.body.removeChild(mirror);
 
-      textarea.scrollTo({
-        top: topPos - 20,
-        behavior: 'auto'
-      });
+        textarea.scrollTo({
+          top: topPos - 20,
+          behavior: 'auto'
+        });
 
-      // Visual feedback: focus and set cursor at the start of the header
-      // Use setTimeout to ensure focus doesn't interrupt the scroll or get lost in re-renders
-      setTimeout(() => {
-        textarea.focus();
         textarea.setSelectionRange(index, index);
-      }, 0);
-    }
+      }
+    });
   }, [previewIdx]);
 
   const checkEx = (text: string, exStr: string) => {
