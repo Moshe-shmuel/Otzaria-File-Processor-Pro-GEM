@@ -53,22 +53,13 @@ const App: React.FC = () => {
 
   const [hierSkip, setHierSkip] = useState<HierarchySkip>({ h1: false, h2: false, h3: false });
   const [previewIdx, setPreviewIdx] = useState(0);
-  const [debouncedContent, setDebouncedContent] = useState('');
 
   const currentFileContent = loadedFiles[previewIdx]?.content;
 
-  // Debounce content updates for header scanning to keep typing smooth
-  React.useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedContent(currentFileContent || '');
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [currentFileContent]);
-
   const previewHeaders = React.useMemo(() => {
-    if (!debouncedContent) return [];
+    if (!currentFileContent) return [];
     const parser = new DOMParser();
-    const doc = parser.parseFromString(debouncedContent, 'text/html');
+    const doc = parser.parseFromString(currentFileContent, 'text/html');
     const nodes = Array.from(doc.querySelectorAll('h1, h2, h3, h4'));
     
     const htmlCounts: Record<string, number> = {};
@@ -83,7 +74,7 @@ const App: React.FC = () => {
         occurrenceIndex: count
       };
     });
-  }, [debouncedContent]);
+  }, [currentFileContent]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
@@ -161,17 +152,16 @@ const App: React.FC = () => {
     }
     
     if (index !== -1) {
-      // Use a more efficient way to measure position if possible, 
-      // but for textarea with wrapping, mirror div is the most reliable.
-      // We optimize by only copying essential styles and using a single measurement.
       const style = window.getComputedStyle(textarea);
       const mirror = document.createElement('div');
       
+      // Comprehensive style copy for maximum accuracy
       const propsToCopy = [
         'fontFamily', 'fontSize', 'fontWeight', 'lineHeight',
         'paddingTop', 'paddingLeft', 'paddingRight', 'paddingBottom',
         'borderLeftWidth', 'borderRightWidth', 'boxSizing',
-        'wordBreak', 'letterSpacing', 'textTransform', 'direction'
+        'wordBreak', 'letterSpacing', 'textTransform', 'direction',
+        'textAlign', 'textIndent', 'whiteSpace', 'wordWrap', 'overflowWrap'
       ];
       
       propsToCopy.forEach(prop => {
@@ -182,13 +172,13 @@ const App: React.FC = () => {
       mirror.style.visibility = 'hidden';
       mirror.style.top = '0';
       mirror.style.left = '-9999px';
-      mirror.style.width = textarea.clientWidth + 'px';
+      // Use getBoundingClientRect for more precision on width
+      mirror.style.width = textarea.getBoundingClientRect().width + 'px';
+      mirror.style.height = 'auto';
       mirror.style.whiteSpace = 'pre-wrap';
       mirror.style.wordWrap = 'break-word';
+      mirror.style.overflowY = 'scroll'; // Force scrollbar space if textarea has it
 
-      // To improve performance for very large files, we could theoretically 
-      // only render the portion of text that matters, but that breaks wrapping.
-      // So we just set it once.
       mirror.textContent = text.substring(0, index);
       const marker = document.createElement('span');
       marker.textContent = '\u200b'; 
@@ -198,7 +188,6 @@ const App: React.FC = () => {
       const topPos = marker.offsetTop;
       document.body.removeChild(mirror);
 
-      // Use 'auto' instead of 'smooth' for immediate response as requested
       textarea.scrollTo({
         top: topPos - 20,
         behavior: 'auto'
