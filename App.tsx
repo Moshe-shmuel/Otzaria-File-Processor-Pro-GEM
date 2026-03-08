@@ -101,38 +101,42 @@ const App: React.FC = () => {
   const isProgrammaticFocus = useRef(false);
 
   // --- לוגיקת ניווט וגלילה מעודכנת ---
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   const scrollToHeader = useCallback((startIndex: number, length: number) => {
     const textarea = textareaRef.current;
     if (!textarea) return;
 
+    // ניקוי טיימר קודם למניעת קפיצות במקרה של לחיצות מהירות
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+    }
+
     isProgrammaticFocus.current = true;
     textarea.focus();
     
-    // שימוש ב-setTimeout(0) מבטיח שהפוקוס הושלם והדפדפן מוכן לגלילה
-    setTimeout(() => {
-      // בחירת הטקסט גורמת ל-textarea לגלול אוטומטית למיקום
-      textarea.setSelectionRange(startIndex, startIndex + length);
+    // בחירת הטקסט גורמת ל-textarea לגלול אוטומטית למיקום
+    textarea.setSelectionRange(startIndex, startIndex + length);
 
-      // ביטול הבחירה הכחולה אחרי רגע והשארת הסמן שם
-      setTimeout(() => {
-        textarea.setSelectionRange(startIndex, startIndex);
-        isProgrammaticFocus.current = false;
-      }, 200);
-    }, 0);
+    // ביטול הבחירה הכחולה אחרי רגע והשארת הסמן שם
+    scrollTimeoutRef.current = setTimeout(() => {
+      textarea.setSelectionRange(startIndex, startIndex);
+      isProgrammaticFocus.current = false;
+      scrollTimeoutRef.current = null;
+    }, 150);
   }, []);
 
   const previewHeaders = React.useMemo(() => {
     if (!currentFileContent) return [];
     
     const headers: { tagName: string; textContent: string; startIndex: number; length: number }[] = [];
-    // Regex למציאת כותרות ושמירת המיקום המדויק שלהן בטקסט הגולמי
     const regex = /<(h[1-6])[^>]*>(.*?)<\/h[1-6]>/gi;
     let match;
 
     while ((match = regex.exec(currentFileContent)) !== null) {
       headers.push({
         tagName: match[1].toUpperCase(),
-        textContent: match[2].replace(/<[^>]*>/g, ''), // ניקוי תגיות פנימיות
+        textContent: match[2].replace(/<[^>]*>/g, '').trim() || 'כותרת ללא טקסט',
         startIndex: match.index,
         length: match[0].length
       });
@@ -686,7 +690,12 @@ const App: React.FC = () => {
                   <button
                     key={i}
                     onClick={() => scrollToHeader(h.startIndex, h.length)}
-                    onMouseDown={(e) => e.preventDefault()}
+                    onMouseDown={(e) => {
+                      // מניעת איבוד פוקוס מהעורך כדי למנוע קפיצות מיותרות
+                      if (document.activeElement === textareaRef.current) {
+                        e.preventDefault();
+                      }
+                    }}
                     className={`text-right text-[11px] p-1.5 border-r-2 transition-colors hover:bg-white flex flex-col items-start w-full ${
                       h.tagName === 'H1' ? 'font-bold border-blue-500 bg-blue-50/50' : 
                       h.tagName === 'H2' ? 'mr-2 border-blue-300' : 
