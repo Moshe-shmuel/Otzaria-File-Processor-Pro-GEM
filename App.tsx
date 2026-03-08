@@ -77,6 +77,7 @@ const App: React.FC = () => {
   const [splitPattern, setSplitPattern] = useState('');
   const [splitBookName, setSplitBookName] = useState('');
   const [splitAuthor, setSplitAuthor] = useState('');
+  const [splitRemoveWord, setSplitRemoveWord] = useState('');
   const [splitExclude, setSplitExclude] = useState('');
   
   // Split Review State
@@ -366,8 +367,13 @@ const App: React.FC = () => {
         parts.forEach(part => {
           const isHeader = part.toLowerCase().startsWith(`<${splitTag}`);
           if (isHeader) {
-            const text = part.replace(/<[^>]*>/g, '').trim();
-            const instruction = headerInstructions.find(ins => ins.id.startsWith(`${fIdx}-`) && ins.originalText === text);
+            const originalText = part.replace(/<[^>]*>/g, '').trim();
+            let text = originalText;
+            if (splitRemoveWord) {
+              const removeRegex = new RegExp(splitRemoveWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+              text = text.replace(removeRegex, '').trim();
+            }
+            const instruction = headerInstructions.find(ins => ins.id.startsWith(`${fIdx}-`) && ins.originalText === originalText);
             
             if (instruction && instruction.shouldSplit) {
               if (currentContent.trim()) {
@@ -880,7 +886,7 @@ const App: React.FC = () => {
                     )}
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div>
                       <label className="block text-sm font-bold text-slate-700 mb-2">שם המחבר להוספה:</label>
                       <input type="text" value={splitAuthor} onChange={e => setSplitAuthor(e.target.value)} className="w-full p-3 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
@@ -888,6 +894,10 @@ const App: React.FC = () => {
                     <div>
                       <label className="block text-sm font-bold text-slate-700 mb-2">שם הספר להוספה (בתחילת שם הקובץ):</label>
                       <input type="text" value={splitBookName} onChange={e => setSplitBookName(e.target.value)} placeholder="לדוגמה: יד דוד על..." className="w-full p-3 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-2">מילה להסרה מהכותרת:</label>
+                      <input type="text" value={splitRemoveWord} onChange={e => setSplitRemoveWord(e.target.value)} placeholder="לדוגמה: מסכת" className="w-full p-3 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
                     </div>
                   </div>
                   
