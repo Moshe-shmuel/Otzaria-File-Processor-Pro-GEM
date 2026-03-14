@@ -17,12 +17,5 @@
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "vite-plugin-singlefile": "^2.3.0"
-  },
-  "devDependencies": {
-    "@types/lodash": "^4.17.15",
-    "@types/node": "^22.14.0",
-    "@vitejs/plugin-react": "^5.0.0",
-    "typescript": "~5.8.2",
-    "vite": "^6.2.0"
   }
 }
